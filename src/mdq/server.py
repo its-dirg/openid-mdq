@@ -32,11 +32,14 @@ class MDQHandler(object):
         self.signing_algs_supported = signing_keys.keys()
         self.signing_algs_supported.append("none")  # Force support for Unsecured JWS
 
-        self.metadata_store = MetadataStore()
         self.validator = RequestValidator(MIME_TYPES_SUPPORTED, self.signing_algs_supported)
 
+        self.metadata_store = MetadataStore()
+        md_update = MetadataUpdate(metadata_file, self.metadata_store)
+        # Force populate the metadata store with initial data
+        md_update()
         # Start updates in the background
-        Monitor(cherrypy.engine, MetadataUpdate(metadata_file, self.metadata_store),
+        Monitor(cherrypy.engine, md_update,
                 frequency=metadata_update_frequency).subscribe()
 
     @cherrypy.expose
