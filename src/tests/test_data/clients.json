@@ -1,0 +1,10 @@
+{
+  "https://client1.example.com": {
+    "client_id": "https://client1.example.com",
+    "redirect_uris": ["https://client1.1.example.com", "https://client1.2.example.com"]
+  },
+  "https://client2.example.com": {
+    "client_id": "https://client2.example.com",
+    "redirect_uris": ["https://client2.1.example.com", "https://client2.2.example.com"]
+  }
+}
