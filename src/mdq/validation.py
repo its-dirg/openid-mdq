@@ -6,6 +6,11 @@ class MalformedRequestError(Exception):
         super(MalformedRequestError, self).__init__(message)
         self.http_status_code = http_status_code
 
+    def __repr__(self):
+        return "{}: {}".format(self.http_status_code, super(MalformedRequestError, self).__repr__())
+
+    def __str__(self):
+        return "{}: {}".format(self.http_status_code, super(MalformedRequestError, self).__str__())
 
 class RequestValidator(object):
     """

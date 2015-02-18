@@ -1,6 +1,7 @@
 import argparse
 import base64
 import json
+import logging
 
 import cherrypy
 from cherrypy.process.plugins import Monitor
@@ -16,6 +17,7 @@ MIME_TYPE_JWT = "application/jwt"
 MIME_TYPE_JSON = "application/json"
 MIME_TYPES_SUPPORTED = [MIME_TYPE_JSON, MIME_TYPE_JWT]
 
+logger = logging.getLogger(__name__)
 
 class MDQHandler(object):
     """
@@ -70,6 +72,7 @@ class MDQHandler(object):
         try:
             self.validator.validate(cherrypy.request)
         except MalformedRequestError as e:
+            logger.info("Malformed request, reason: '{}'".format(str(e)))
             if e.http_status_code == 405:
                 cherrypy.response.headers['Allow'] = 'GET'
             raise cherrypy.HTTPError(e.http_status_code, e.message)
@@ -85,7 +88,9 @@ class MDQHandler(object):
             try:
                 entity = self.metadata_store[entity_id]
             except KeyError:
-                raise cherrypy.HTTPError(404, "Unknown client_id '{entity_id}'.".format(entity_id=entity_id))
+                _msg = "Unknown entity id '{}'".format(entity_id)
+                logger.info(_msg)
+                raise cherrypy.HTTPError(404, _msg)
 
         cherrypy.response.headers["Content-Type"] = MIME_TYPE_JSON
         cherrypy.response.headers["Cache-Control"] = "max-age={}".format(self.update_frequency)

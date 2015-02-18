@@ -31,7 +31,7 @@ class MetadataUpdate(object):
             logger.info("Metadata update successful: {n} clients known.".format(n=len(file_data)))
         except (IOError, ValueError) as e:
             self.metadata_store.update({})
-            logger.exception("Metadata update failed".format(e))
+            logger.info("Metadata update failed.", exc_info=True)
 
 
 class MetadataEntry(object):
