@@ -33,7 +33,7 @@ class TestMDQHandler(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        file_name = full_test_path("test_data/clients.json")
+        cls.file_name = full_test_path("test_data/clients.json")
         with open(full_test_path("test_data/clients.json")) as f:
             cls.METADATA_FROM_FILE = json.load(f)
 
@@ -48,7 +48,7 @@ class TestMDQHandler(unittest.TestCase):
         }
 
         cls.SIGNING_ALGS_SUPPORTED = signing_keys.keys()
-        cls.MDQ = MDQHandler(file_name, 36000, signing_keys)
+        cls.MDQ = MDQHandler(cls.file_name, 36000, signing_keys)
 
         cherrypy.config.update({"environment": "test_suite"})
         cherrypy.server.socket_host = "0.0.0.0"
@@ -145,6 +145,12 @@ class TestMDQHandler(unittest.TestCase):
             assert json.loads(payload) == TestMDQHandler.METADATA_FROM_FILE[TestMDQHandler.CLIENT_ID]
 
         # Unsupported signing algorithm
+        response = requests.get(TestMDQHandler.URL, params={MDQHandler.SIGNING_ALG_QUERY_PARAM: "PS256"},
+                                headers=TestMDQHandler.HEADERS)
+        assert response.status_code == 400
+
+        # Request signing with MDQ server without keys
+        TestMDQHandler.MDQ = MDQHandler(TestMDQHandler.file_name, 36000)
         response = requests.get(TestMDQHandler.URL, params={MDQHandler.SIGNING_ALG_QUERY_PARAM: "PS256"},
                                 headers=TestMDQHandler.HEADERS)
         assert response.status_code == 400
