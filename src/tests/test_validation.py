@@ -18,7 +18,7 @@ class TestRequestValidator(unittest.TestCase):
     }
 
     def setUp(self):
-        self.validator = RequestValidator(["application/json", "application/jwt"], ["HS256"])
+        self.validator = RequestValidator(["application/json", "application/jwt"])
         self.request = Mock(**TestRequestValidator.BASE_REQUEST)
 
     def test_valid_request(self):
@@ -44,14 +44,6 @@ class TestRequestValidator(unittest.TestCase):
         # Remove all headers
         with patch.dict(self.request.headers, clear=True):
             self._verify_expected_http_status_code(406)
-
-    @patch.dict(BASE_REQUEST["headers"], {"Accept": "application/jwt"})
-    def test_jwt_handling(self):
-        # accept missing query parameter
-        self.validator.validate(self.request)
-
-        with patch.dict(self.request.params, {"signing_alg": "HS256"}):
-            assert self.validator.validate(self.request)
 
     def _verify_expected_http_status_code(self, expected_status_code):
         with pytest.raises(MalformedRequestError) as exc_info:
