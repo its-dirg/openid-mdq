@@ -5,9 +5,9 @@ import logging
 
 import cherrypy
 from cherrypy.process.plugins import Monitor
-from jwkest.jws import JWS
 
 from mdq.metadata import MetadataStore, MetadataUpdate
+from mdq.signers import SigningFailedError
 from mdq.validation import RequestValidator, MalformedRequestError
 
 
@@ -19,6 +19,7 @@ MIME_TYPES_SUPPORTED = [MIME_TYPE_JSON, MIME_TYPE_JWT]
 
 logger = logging.getLogger(__name__)
 
+
 class MDQHandler(object):
     """
     Implementation of the OpenID Connect Profile for the Metadata Query Protocol.
@@ -26,15 +27,11 @@ class MDQHandler(object):
 
     SIGNING_ALG_QUERY_PARAM = "signing_alg"
 
-    def __init__(self, metadata_file, metadata_update_frequency, signing_keys=None):
+    def __init__(self, metadata_file, metadata_update_frequency, signer=None):
         self.update_frequency = metadata_update_frequency
-        if signing_keys is None:
-            signing_keys = {}
-        self.signing_keys = signing_keys.values()
-        self.signing_algs_supported = signing_keys.keys()
-        self.signing_algs_supported.append("none")  # Force support for Unsecured JWS
+        self.signer = signer
 
-        self.validator = RequestValidator(MIME_TYPES_SUPPORTED, self.signing_algs_supported)
+        self.validator = RequestValidator(MIME_TYPES_SUPPORTED)
 
         self.metadata_store = MetadataStore()
         md_update = MetadataUpdate(metadata_file, self.metadata_store)
@@ -99,9 +96,15 @@ class MDQHandler(object):
         data = json.dumps(entity.metadata)
 
         if content_type == MIME_TYPE_JWT:
-            algorithm = kwargs.get(MDQHandler.SIGNING_ALG_QUERY_PARAM, None) or "none"
-            data = JWS(data, alg=algorithm).sign_compact(keys=self.signing_keys)
-            cherrypy.response.headers["Content-Type"] = MIME_TYPE_JWT
+            if self.signer is not None:
+                algorithm = kwargs.get(MDQHandler.SIGNING_ALG_QUERY_PARAM, "none")
+                try:
+                    data = self.signer.sign(data, algorithm)
+                except SigningFailedError as e:
+                    raise cherrypy.HTTPError(400, "Signing failed, maybe unsupported algorithm.")
+                cherrypy.response.headers["Content-Type"] = MIME_TYPE_JWT
+            else:
+                raise cherrypy.HTTPError(400, "Signed responses are not supported.")
 
         return data
 

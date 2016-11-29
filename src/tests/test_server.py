@@ -12,6 +12,7 @@ from mock import patch
 import requests
 
 from mdq.server import MDQHandler, CHERRYPY_CONFIG, MIME_TYPE_JWT
+from mdq.signers import LocalSigner
 
 
 __author__ = 'regu0004'
@@ -37,18 +38,16 @@ class TestMDQHandler(unittest.TestCase):
         with open(full_test_path("test_data/clients.json")) as f:
             cls.METADATA_FROM_FILE = json.load(f)
 
-        sym_key = SYMKey(key=TestMDQHandler.SYM_KEY_PHRASE)
         rsa_key = RSAKey(key=import_rsa_key_from_file(full_test_path("test_data/certs/rsa2048")))
         cls.EC_KEY = ECKey().load_key(P256)
 
         signing_keys = {
-            "HS256": sym_key,
             "RS256": rsa_key,
             "ES256": cls.EC_KEY
         }
 
         cls.SIGNING_ALGS_SUPPORTED = signing_keys.keys()
-        cls.MDQ = MDQHandler(file_name, 36000, signing_keys)
+        cls.MDQ = MDQHandler(file_name, 36000, LocalSigner(signing_keys.values()))
 
         cherrypy.config.update({"environment": "test_suite"})
         cherrypy.server.socket_host = "0.0.0.0"
@@ -145,6 +144,6 @@ class TestMDQHandler(unittest.TestCase):
             assert json.loads(payload) == TestMDQHandler.METADATA_FROM_FILE[TestMDQHandler.CLIENT_ID]
 
         # Unsupported signing algorithm
-        response = requests.get(TestMDQHandler.URL, params={MDQHandler.SIGNING_ALG_QUERY_PARAM: "PS256"},
+        response = requests.get(TestMDQHandler.URL, params={MDQHandler.SIGNING_ALG_QUERY_PARAM: "HS256"},
                                 headers=TestMDQHandler.HEADERS)
         assert response.status_code == 400
